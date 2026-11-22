@@ -1,16 +1,16 @@
-# Hero Forge: ASCII Arena — Plan
+﻿# Hero Forge: ASCII Arena â€” Plan
 
-## v1 (stickman clicker) — replaced, kept in git history
+## v1 (stickman clicker) â€” replaced, kept in git history
 - [x] Train mode + 10s boss fight mode with stickman heroes
 
 ## v2: ASCII arena shooter
 - [x] Move project to D:\Projects\hero-forge
 - [x] ASCII-rendered 3D arena: camera behind character at arena center, yaw-only mouse look (pointer lock)
 - [x] Third-person back view of the character, crosshair aims with mouse Y
-- [x] Click-speed duels: your clicks/s × gun ROF vs enemy clicks/s decides who deals damage
+- [x] Click-speed duels: your clicks/s Ã— gun ROF vs enemy clicks/s decides who deals damage
 - [x] Enemies shoot back, player health bar, heal between waves
 - [x] Endless waves: enemies get more HP, damage and clicks/s; boss every 5th wave
-- [x] Gun upgrades every 10 kills: Common → Uncommon → Rare → Epic → Legendary → Mythic → Cosmic → endless, each with new color, ammo, effects, damage
+- [x] Gun upgrades every 10 kills: Common â†’ Uncommon â†’ Rare â†’ Epic â†’ Legendary â†’ Mythic â†’ Cosmic â†’ endless, each with new color, ammo, effects, damage
 - [x] Two versions: Black & White (only guns/bullets colored) and Full Color
 - [x] Maps: Forest, Desert, Aurora (+ cycle each wave)
 - [x] 4 selectable characters
@@ -38,6 +38,7 @@
 - [x] Gun-colored aura on the ground ahead of the hero, kept in color in B&W (own alpha tag, recolored with gun hue)
 - [x] Northern lights stay colored in B&W
 - [x] Cheat code: type "lasergun" to toggle 100 shots/s auto-fire
+- [x] Shading pass: edge-detected contour strokes, stronger key light vs fill, smooth tone curve, calmer glyph ramp
 
 ## Next
 - [ ] Playtest balance (enemy clicks/s growth vs gun ROF)
