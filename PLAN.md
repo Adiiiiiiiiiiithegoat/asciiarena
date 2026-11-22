@@ -27,6 +27,12 @@
 - [x] Grand UI: Cinzel panels, segmented health, duel meter, radar, animated banners
 - [x] B&W mode keeps only guns/bullets colored via the alpha tag
 
+## v3.1: readability + champions
+- [x] Champions rebuilt on a jointed rig (capsule limbs, elbows, gloves, boots) with per-character gear; all ~15% smaller, Mech much smaller
+- [x] Finer glyph grid for more detail
+- [x] Enemies bigger, brighter, pulsing 2-cell outline, red marker above each
+- [x] Red vertical edge glows for off-screen enemies, flaring when they shoot
+
 ## Next
 - [ ] Playtest balance (enemy clicks/s growth vs gun ROF)
 - [ ] Check frame rate on the real GPU at 1080p/1440p
