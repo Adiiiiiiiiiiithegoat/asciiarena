@@ -199,7 +199,8 @@ const postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,
   vec2 px=vUv*res,id=floor(px/cell),c=(id+.5)*cell/res,o=cell/res*.28;
   vec4 s0=texture2D(tScene,c);
   vec3 col=(s0.rgb*2.+texture2D(tScene,c+o).rgb+texture2D(tScene,c-o).rgb+texture2D(tScene,c+vec2(o.x,-o.y)).rgb+texture2D(tScene,c+vec2(-o.x,o.y)).rgb)/6.;
-  float a=s0.a,keep=step(.87,a),enemy=step(.69,a)*(1.-keep),heroM=step(.56,a)*(1.-step(.69,a)),worldM=1.-keep-enemy-heroM;
+  float a=s0.a,auraM=step(.86,a)*(1.-step(.97,a)),at=clamp((a-.87)/.09,0.,1.)*auraM; // aura tag .87–.96 carries its strength
+  float keep=step(.86,a),enemy=step(.69,a)*(1.-keep),heroM=step(.56,a)*(1.-step(.69,a)),worldM=1.-keep-enemy-heroM+auraM; // aura ground shades like world
   col*=mix(1.,.78,worldM);                                    // push the environment back
   col=mix(col,col*1.7+.12,enemy);col=mix(col,col*1.15+.02,heroM);
   float lum=dot(col,vec3(.299,.587,.114));
@@ -211,13 +212,15 @@ const postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,
   vec3 gc=clamp(col*gain*mix(1.9,1.25,worldM),0.,1.);gc=max(gc,tint*.22*step(.015,lum));
   vec3 bg=col*mix(.16,.08,worldM);
   if(mono>.5&&keep<.5){float l=clamp(lum*gain*mix(1.9,1.25,worldM),0.,1.);gc=vec3(l);bg=vec3(lum*mix(.13,.06,worldM));}
-  if(mono>.5&&keep>.5&&a<.97){float l=clamp(lum*gain*1.9,0.,1.);gc=clamp(auraCol*(.35+l*1.3),0.,1.);bg=auraCol*l*.12;} // aura tag: gun hue only
+  if(mono>.5&&auraM>.5){float l=clamp(lum*gain*1.9,0.,1.),gl=clamp(lum*gain*1.25,0.,1.); // B&W aura: grey → gun hue by strength, no hard edge
+   gc=mix(vec3(gl),clamp(auraCol*(.3+l*1.3),0.,1.),at);bg=mix(vec3(lum*.06),auraCol*l*.12,at);}
   vec2 cx=vec2(cell.x/res.x,0.),cy=vec2(0.,cell.y/res.y);vec4 nb;float near=0.;vec3 nt=vec3(0.);
   vec4 sR=texture2D(tScene,c+cx),sL=texture2D(tScene,c-cx),sU=texture2D(tScene,c+cy),sD=texture2D(tScene,c-cy);
   // contours: luminance + tag discontinuities between neighbouring cells become directional strokes (bar, dash, slashes)
   vec3 LW=vec3(.299,.587,.114);
-  float gx=(dot(sR.rgb,LW)+sR.a*1.5)-(dot(sL.rgb,LW)+sL.a*1.5),gy=(dot(sU.rgb,LW)+sU.a*1.5)-(dot(sD.rgb,LW)+sD.a*1.5),em=length(vec2(gx,gy))*gain;
-  if(em>.32&&keep<.5){float ax=abs(gx),ay=abs(gy),ei=ax>ay*2.?0.:ay>ax*2.?1.:(gx*gy>0.?3.:2.);
+  #define TG(q) ((q>.86&&q<.97)?.5:q)
+  float gx=(dot(sR.rgb,LW)+TG(sR.a)*1.5)-(dot(sL.rgb,LW)+TG(sL.a)*1.5),gy=(dot(sU.rgb,LW)+TG(sU.a)*1.5)-(dot(sD.rgb,LW)+TG(sD.a)*1.5),em=length(vec2(gx,gy))*gain;
+  if(em>.32&&(keep<.5||auraM>.5)){float ax=abs(gx),ay=abs(gy),ei=ax>ay*2.?0.:ay>ax*2.?1.:(gx*gy>0.?3.:2.);
    m=max(m*.35,texture2D(tEdge,vec2((ei+gu.x)/4.,gu.y)).r);gc=clamp(gc*1.3+.08,0.,1.);}
   // enemy outline: cells touching an enemy (but not on one) get a bright dense glyph
   if(sR.a>.69&&sR.a<.87){near=1.;nt=sR.rgb;}if(sL.a>.69&&sL.a<.87){near=1.;nt=sL.rgb;}
@@ -265,7 +268,7 @@ const auraMat=new THREE.ShaderMaterial({uniforms:{c:{value:new THREE.Color()},k:
  blending:THREE.CustomBlending,blendEquation:THREE.AddEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneFactor,blendSrcAlpha:THREE.OneFactor,blendDstAlpha:THREE.ZeroFactor,
  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
  fragmentShader:`uniform vec3 c;uniform float k,time;varying vec2 vUv;void main(){float d=length(vUv-.5)*2.;float cov=smoothstep(1.,.3,d);
-  float ring=.5+.5*sin(d*14.-time*5.);gl_FragColor=vec4(c*cov*(.3+ring*.7)*k*1.4,cov>.25?.92:.5);}`});
+  float ring=.5+.5*sin(d*14.-time*5.);gl_FragColor=vec4(c*cov*(.3+ring*.7)*k*1.4,cov>.02?.87+cov*.09:.5);}`}); // tag encodes strength → smooth B&W falloff
 const aura=new THREE.Mesh(new THREE.PlaneGeometry(3.2,3.2),auraMat);aura.rotation.x=-Math.PI/2;aura.position.y=.1;aura.renderOrder=2;scene.add(aura);
 function pointMat(alpha){const m=new THREE.ShaderMaterial({uniforms:{a:{value:alpha},scale:{value:600}},...addBlend(alpha<1),
  vertexShader:`attribute float size;attribute vec3 color;varying vec3 vC;uniform float scale;void main(){vC=color;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=max(1.5,size*scale/-mv.z);gl_Position=projectionMatrix*mv;}`,
@@ -349,7 +352,7 @@ function buildAurora(){
   const m=new THREE.ShaderMaterial({uniforms:{time:{value:0},c1:{value:new THREE.Color(c1)},c2:{value:new THREE.Color(c2)}},...addBlend(false),side:THREE.DoubleSide, // bright curtain pixels get the color tag → stay colored in B&W
    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
    fragmentShader:`uniform float time;uniform vec3 c1,c2;varying vec2 vUv;void main(){float s=.5+.5*sin(vUv.x*220.+time*1.4+sin(vUv.x*24.+time*.3)*5.);float b=.45+.55*sin(vUv.x*11.+time*.35);
-    float f=smoothstep(0.,.18,vUv.y)*pow(1.-vUv.y,1.4);float a=f*(.35+.65*s)*max(b,0.);gl_FragColor=vec4(mix(c1,c2,vUv.y)*a*2.8,a*1.2);}`});
+    float f=smoothstep(0.,.18,vUv.y)*pow(1.-vUv.y,1.4);float a=f*(.35+.65*s)*max(b,0.);gl_FragColor=vec4(mix(c1,c2,vUv.y)*a*2.8,a>.04?1.:0.);}`}); // full color tag wherever visible (never the aura's partial range)
   anim.push(t=>m.uniforms.time.value=t+seed);const mesh=new THREE.Mesh(g,m);mesh.frustumCulled=false;world.add(mesh)};
  rib(-1.2,2.4,35,90,'#39ff9e','#b45cff',0);rib(.6,2.2,50,80,'#3df5ff','#7a3dff',3);rib(2.6,2.6,40,100,'#4dffb0','#ff5ad8',7);
  const snow=points(900,.5,(i,p,c,s)=>{p.set([rnd(-30,30),rnd(0,18),rnd(-30,30)],i*3);c.set([.85,.9,1],i*3);s[i]=rnd(.04,.08)});
