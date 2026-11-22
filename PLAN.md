@@ -33,6 +33,12 @@
 - [x] Enemies bigger, brighter, pulsing 2-cell outline, red marker above each
 - [x] Red vertical edge glows for off-screen enemies, flaring when they shoot
 
+## v3.2
+- [x] GitHub repo (public) + Vercel project asciiarena, auto-deploy on push
+- [x] Gun-colored aura on the ground ahead of the hero, kept in color in B&W (own alpha tag, recolored with gun hue)
+- [x] Northern lights stay colored in B&W
+- [x] Cheat code: type "lasergun" to toggle 100 shots/s auto-fire
+
 ## Next
 - [ ] Playtest balance (enemy clicks/s growth vs gun ROF)
 - [ ] Check frame rate on the real GPU at 1080p/1440p

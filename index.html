@@ -52,6 +52,9 @@ body.mono .hud-mono{filter:grayscale(1)}
 .dmid{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:#fff;box-shadow:0 0 6px #fff}
 .dstate{grid-column:1/-1;text-align:center;font:700 12px Cinzel,serif;letter-spacing:.32em;color:var(--dim)}
 .dstate.win{color:#7dffb0;text-shadow:0 0 12px #3dff8a}.dstate.lose{color:#ff6b7d;text-shadow:0 0 12px #ff3b5c}
+#cheat{left:50%;top:132px;transform:translateX(-50%);padding:5px 16px;font:800 11px "JetBrains Mono",monospace;letter-spacing:.3em;color:#ff8af2;border-color:#ff3df0;box-shadow:0 0 20px rgba(255,61,240,.45);display:none;animation:cheatPulse 1s ease-in-out infinite alternate}
+#cheat.on{display:block}
+@keyframes cheatPulse{to{box-shadow:0 0 34px rgba(255,61,240,.8)}}
 #banner{position:absolute;left:50%;top:27%;transform:translate(-50%,-50%);text-align:center;opacity:0;white-space:nowrap}
 #banner.show{animation:ban 2.8s ease forwards}
 @keyframes ban{0%{opacity:0;transform:translate(-50%,-50%) scale(1.3);letter-spacing:.5em}12%{opacity:1;transform:translate(-50%,-50%) scale(1);letter-spacing:.06em}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-62%)}}
@@ -110,6 +113,7 @@ body.mono .hud-mono{filter:grayscale(1)}
   <div class="panel duel hud-mono"><div class="dl"><small>YOU</small><b id="dYou">0.0</b></div>
     <div class="dbar"><div id="dFill"></div><div class="dmid"></div></div>
     <div class="dr"><small>TARGET</small><b id="dThem">—</b></div><div class="dstate" id="dState">AIM AT AN ENEMY</div></div>
+  <div class="panel" id="cheat">⚡ LASERGUN · 100/s</div>
   <div id="banner"></div>
 </div>
 
@@ -183,9 +187,9 @@ function glyphAtlas(){ // glyphs sorted by measured ink coverage → luminance r
  const t=new THREE.CanvasTexture(A);t.minFilter=t.magFilter=THREE.LinearFilter;t.generateMipmaps=false;return{t,n:cov.length}}
 const GL=glyphAtlas();
 const postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,
- uniforms:{tScene:{value:rt.texture},tGlyph:{value:GL.t},n:{value:GL.n},res:{value:new THREE.Vector2()},cell:{value:new THREE.Vector2()},mono:{value:0},time:{value:0},gain:{value:1.5},hurt:{value:0},raw:{value:DEMO.has('raw')?1:0}},
+ uniforms:{tScene:{value:rt.texture},tGlyph:{value:GL.t},n:{value:GL.n},res:{value:new THREE.Vector2()},cell:{value:new THREE.Vector2()},mono:{value:0},time:{value:0},gain:{value:1.5},hurt:{value:0},raw:{value:DEMO.has('raw')?1:0},auraCol:{value:new THREE.Color()}},
  vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,
- fragmentShader:`uniform sampler2D tScene,tGlyph;uniform vec2 res,cell;uniform float n,mono,time,gain,hurt,raw;varying vec2 vUv;
+ fragmentShader:`uniform sampler2D tScene,tGlyph;uniform vec2 res,cell;uniform float n,mono,time,gain,hurt,raw;uniform vec3 auraCol;varying vec2 vUv;
  float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
  void main(){
   if(raw>.5){gl_FragColor=vec4(texture2D(tScene,vUv).rgb*gain,1.);return;} // debug: scene without the ASCII pass
@@ -204,6 +208,7 @@ const postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,
   vec3 gc=clamp(col*gain*mix(1.9,1.25,worldM),0.,1.);gc=max(gc,tint*.22*step(.015,lum));
   vec3 bg=col*mix(.16,.08,worldM);
   if(mono>.5&&keep<.5){float l=clamp(lum*gain*mix(1.9,1.25,worldM),0.,1.);gc=vec3(l);bg=vec3(lum*mix(.13,.06,worldM));}
+  if(mono>.5&&keep>.5&&a<.97){float l=clamp(lum*gain*1.9,0.,1.);gc=clamp(auraCol*(.35+l*1.3),0.,1.);bg=auraCol*l*.12;} // aura tag: gun hue only
   // enemy outline: cells touching an enemy (but not on one) get a bright dense glyph
   vec2 cx=vec2(cell.x/res.x,0.),cy=vec2(0.,cell.y/res.y);vec4 nb;float near=0.;vec3 nt=vec3(0.);
   nb=texture2D(tScene,c+cx);if(nb.a>.69&&nb.a<.87){near=1.;nt=nb.rgb;}
@@ -217,7 +222,7 @@ const postMat=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,
    gc=mono>.5?vec3(pu):clamp(mix(ntint,vec3(1.,.18,.25),.6)*1.35*pu,0.,1.);bg=gc*.22;}
   vec3 bl=vec3(0.);                                           // cheap bloom from bright emissive neighbours
   for(int i=0;i<4;i++){vec2 d=vec2(i==0?1.:i==1?-1.:0.,i==2?1.:i==3?-1.:0.)*cell/res*2.2;vec4 t=texture2D(tScene,c+d);
-   vec3 tc=t.rgb;if(mono>.5&&t.a<.9)tc=vec3(dot(tc,vec3(.299,.587,.114)));bl+=tc*smoothstep(.55,1.,max(tc.r,max(tc.g,tc.b)));}
+   vec3 tc=t.rgb;if(mono>.5&&t.a<.97)tc=vec3(dot(tc,vec3(.299,.587,.114)));bl+=tc*smoothstep(.55,1.,max(tc.r,max(tc.g,tc.b)));}
   vec3 outc=bg+gc*m+bl*.1;
   float v=smoothstep(1.2,.3,length((vUv-.5)*vec2(1.25,1.)));outc*=.35+.65*v;
   outc*=.93+.07*step(.5,fract(px.y*.5));
@@ -247,6 +252,14 @@ const pointMats=[];
 // additive glow that leaves the pixel's alpha tag alone (world FX) or forces it to 1 (gun/bullet FX)
 const addBlend=keepTag=>({transparent:true,depthWrite:false,blending:THREE.CustomBlending,blendEquation:THREE.AddEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneFactor,
  blendSrcAlpha:keepTag?THREE.ZeroFactor:THREE.OneFactor,blendDstAlpha:THREE.OneFactor});
+// gun-colored aura on the ground under the hero; its alpha raises the color tag where it's bright, so it stays colored in B&W
+// additive glow; alpha is *replaced* with the aura tag (.92) so the B&W pass recolors these pixels with the gun color
+const auraMat=new THREE.ShaderMaterial({uniforms:{c:{value:new THREE.Color()},k:{value:.4},time:{value:0}},transparent:true,depthWrite:false,
+ blending:THREE.CustomBlending,blendEquation:THREE.AddEquation,blendSrc:THREE.OneFactor,blendDst:THREE.OneFactor,blendSrcAlpha:THREE.OneFactor,blendDstAlpha:THREE.ZeroFactor,
+ vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+ fragmentShader:`uniform vec3 c;uniform float k,time;varying vec2 vUv;void main(){float d=length(vUv-.5)*2.;float cov=smoothstep(1.,.3,d);
+  float ring=.5+.5*sin(d*14.-time*5.);gl_FragColor=vec4(c*cov*(.3+ring*.7)*k*1.4,cov>.25?.92:.5);}`});
+const aura=new THREE.Mesh(new THREE.PlaneGeometry(3.8,3.8),auraMat);aura.rotation.x=-Math.PI/2;aura.position.y=.1;aura.renderOrder=2;scene.add(aura);
 function pointMat(alpha){const m=new THREE.ShaderMaterial({uniforms:{a:{value:alpha},scale:{value:600}},...addBlend(alpha<1),
  vertexShader:`attribute float size;attribute vec3 color;varying vec3 vC;uniform float scale;void main(){vC=color;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=max(1.5,size*scale/-mv.z);gl_Position=projectionMatrix*mv;}`,
  fragmentShader:`uniform float a;varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;float f=1.-d*2.;gl_FragColor=vec4(vC*f*1.6,1.);}`});pointMats.push(m);return m}
@@ -326,10 +339,10 @@ function buildAurora(){
  points(1800,.5,(i,p,c,s,col)=>{const th=rnd(0,TAU),ph=Math.acos(rnd(.05,1)),r=520;p.set([Math.sin(ph)*Math.cos(th)*r,Math.cos(ph)*r,Math.sin(ph)*Math.sin(th)*r],i*3);const b=rnd(.4,1);c.set([b,b,b],i*3);s[i]=rnd(1.2,3)});
  const rib=(a0,span,y0,hgt,c1,c2,seed)=>{const g=new THREE.PlaneGeometry(1,1,180,1),p=g.attributes.position,uv=g.attributes.uv;
   for(let i=0;i<p.count;i++){const u=uv.getX(i),v=uv.getY(i),a=a0+u*span,rr=300+Math.sin(u*9+seed)*40;p.setXYZ(i,Math.sin(a)*rr,y0+v*hgt+Math.sin(u*5+seed)*12,-Math.cos(a)*rr)}
-  const m=new THREE.ShaderMaterial({uniforms:{time:{value:0},c1:{value:new THREE.Color(c1)},c2:{value:new THREE.Color(c2)}},...addBlend(true),side:THREE.DoubleSide,
+  const m=new THREE.ShaderMaterial({uniforms:{time:{value:0},c1:{value:new THREE.Color(c1)},c2:{value:new THREE.Color(c2)}},...addBlend(false),side:THREE.DoubleSide, // bright curtain pixels get the color tag → stay colored in B&W
    vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
    fragmentShader:`uniform float time;uniform vec3 c1,c2;varying vec2 vUv;void main(){float s=.5+.5*sin(vUv.x*220.+time*1.4+sin(vUv.x*24.+time*.3)*5.);float b=.45+.55*sin(vUv.x*11.+time*.35);
-    float f=smoothstep(0.,.18,vUv.y)*pow(1.-vUv.y,1.4);float a=f*(.35+.65*s)*max(b,0.);gl_FragColor=vec4(mix(c1,c2,vUv.y)*a*2.8,.5*a);}`});
+    float f=smoothstep(0.,.18,vUv.y)*pow(1.-vUv.y,1.4);float a=f*(.35+.65*s)*max(b,0.);gl_FragColor=vec4(mix(c1,c2,vUv.y)*a*2.8,a*1.2);}`});
   anim.push(t=>m.uniforms.time.value=t+seed);const mesh=new THREE.Mesh(g,m);mesh.frustumCulled=false;world.add(mesh)};
  rib(-1.2,2.4,35,90,'#39ff9e','#b45cff',0);rib(.6,2.2,50,80,'#3df5ff','#7a3dff',3);rib(2.6,2.6,40,100,'#4dffb0','#ff5ad8',7);
  const snow=points(900,.5,(i,p,c,s)=>{p.set([rnd(-30,30),rnd(0,18),rnd(-30,30)],i*3);c.set([.85,.9,1],i*3);s[i]=rnd(.04,.08)});
@@ -643,7 +656,11 @@ function toMenu(){state='menu';clearEnemies();GS=null;setGun(0);show('pause',fal
 document.addEventListener('mousemove',e=>{if(document.pointerLockElement===$('gl')&&state==='play'){yaw+=e.movementX*.0022*CFG.sens;aimY=clamp(aimY+e.movementY*CFG.sens,H*.12,H*.88)}});
 $('gl').addEventListener('mousedown',e=>{if(state==='play'&&e.button===0){if(document.pointerLockElement!==$('gl'))lock();else fire()}});
 $('gl').addEventListener('contextmenu',e=>e.preventDefault());
-addEventListener('keydown',e=>{if(e.code==='Space'&&state==='play'){e.preventDefault();if(!e.repeat)fire()}if(e.code==='KeyM')toggleMusic()});
+let laser=false,laserAcc=0,cheatBuf='';
+function toggleLaser(){laser=!laser;$('cheat').classList.toggle('on',laser);
+ banner('CHEAT CODE',laser?'LASERGUN':'LASERGUN OFF',laser?'#ff3df0':'#9aa0b4',laser?'AUTO-FIRE · 100 SHOTS PER SECOND':'BACK TO MANUAL FIRE',true)}
+addEventListener('keydown',e=>{if(e.code==='Space'&&state==='play'){e.preventDefault();if(!e.repeat)fire()}if(e.code==='KeyM')toggleMusic();
+ if(e.key.length===1){cheatBuf=(cheatBuf+e.key.toLowerCase()).slice(-8);if(cheatBuf==='lasergun'){cheatBuf='';toggleLaser()}}});
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==$('gl')&&state==='play'&&!DEMO.has('demo'))pause()});
 document.addEventListener('pointerlockerror',()=>{if(state==='play'&&!DEMO.has('demo'))pause()});
 $('start').onclick=()=>startGame();$('again').onclick=()=>startGame();
@@ -671,6 +688,9 @@ function frame(now){const dt=clamp((now-last)/1000,0,.05);last=now;T+=dt; // rAF
  placeCamera(dt);camera.updateMatrixWorld();dome.position.copy(camera.position);
  for(const a of anim)a(T,dt);updTracers(dt);updPulses(dt);updBolts(dt);updParticles(dt);
  flashL.intensity*=Math.pow(.0005,dt);boomL.intensity*=Math.pow(.002,dt);
+ aura.position.x=Math.sin(yaw)*1.5;aura.position.z=-Math.cos(yaw)*1.5; // pool of gun light on the ground just ahead of the hero (feet are below the frame)
+ gunColor(GS?GS.tier:0,auraMat.uniforms.c.value);postMat.uniforms.auraCol.value.copy(auraMat.uniforms.c.value);auraMat.uniforms.time.value=T;auraMat.uniforms.k.value=.42+(GS?GS.recoil*.45+Math.min(GS.cps/25,.35):0);
+ if(laser&&state==='play'){laserAcc+=dt;for(let n=0;laserAcc>=.01&&n<10;n++){laserAcc-=.01;fire()}}else laserAcc=0; // cheat: exactly 100 shots/s, frame-rate independent
  const tg=state==='play'?aimTarget():null;
  if(DEMO.has('demo')&&GS&&GS.enemies.length){const e=GS.enemies.find(e=>!e.dead);if(e){tmpV.copy(e.g.position);tmpV.y+=e.height*.55;tmpV.project(camera);aimY=clamp((-tmpV.y*.5+.5)*H,H*.12,H*.88);yaw+=(Math.atan2(e.g.position.x,-e.g.position.z)-yaw)*.05}}
  postMat.uniforms.time.value=T;postMat.uniforms.hurt.value=GS?Math.max(GS.hurt*.8,state==='play'&&GS.hp/GS.max<.3?.12+.08*Math.sin(T*6):0):0;
@@ -678,7 +698,7 @@ function frame(now){const dt=clamp((now-last)/1000,0,.05);last=now;T+=dt; // rAF
  drawHUD(tg,dt);requestAnimationFrame(frame)}
 resize();syncMenu();$('loading').remove();
 if(DEMO.has('demo')){startGame(false);GS.spawnT=0;for(let i=0;i<4;i++)spawn();GS.enemies.forEach((e,i)=>{e.ang=i<3?yaw+(i-1)*.35:yaw-2.2;e.r=10+i*3;e.fireT=.3});const t=+(DEMO.get('tier')||0);if(t){GS.tier=t;setGun(t)}
- setInterval(()=>{if(state==='play')fire()},70)}
+ if(DEMO.has('laser'))toggleLaser();else setInterval(()=>{if(state==='play')fire()},70)}
 requestAnimationFrame(frame);
 </script>
 </body>
