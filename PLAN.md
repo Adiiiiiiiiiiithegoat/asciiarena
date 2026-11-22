@@ -17,5 +17,16 @@
 - [x] Synthesized sound effects + arcade chiptune music (M to mute)
 - [x] Off-screen enemy arrows + ASCII radar
 
+## v3: real 3D + ASCII shader
+- [x] three.js scene rendered through an ASCII post-process shader (glyphs sorted by ink coverage, colored per cell)
+- [x] Gears-style over-the-shoulder camera, hero in lower-left, yaw-only mouse look
+- [x] Forest rebuilt: tall trunks, golden canopy, god rays, fireflies, grass; desert and aurora rebuilt in 3D
+- [x] 3D characters (Ranger, Ronin, Mech, Outlaw), enemies (grunt, drone, boss) with walk cycles and shatter deaths
+- [x] Gun models grow per tier; tracers, sparks, explosions, chain lightning, nova rings
+- [x] Contrast pass: alpha-tagged pixels; world dimmed, enemies boosted and outlined
+- [x] Grand UI: Cinzel panels, segmented health, duel meter, radar, animated banners
+- [x] B&W mode keeps only guns/bullets colored via the alpha tag
+
 ## Next
 - [ ] Playtest balance (enemy clicks/s growth vs gun ROF)
+- [ ] Check frame rate on the real GPU at 1080p/1440p
